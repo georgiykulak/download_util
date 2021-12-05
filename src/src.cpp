@@ -4,6 +4,9 @@
 #include "framework.h"
 #include "src.h"
 
+#include <shellapi.h>
+#include <string>
+
 #define MAX_LOADSTRING 100
 
 // Global Variables:
@@ -40,6 +43,34 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
     HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_SRC));
 
+    int numberOfArgs;
+    LPWSTR* cmdArgList = CommandLineToArgvW(lpCmdLine, &numberOfArgs);
+    
+    if (NULL == cmdArgList)
+    {
+        MessageBox(
+            NULL,
+            (LPCWSTR)L"Arguments are empty or something went wrong",
+            (LPCWSTR)L"Error reading arguments from command line",
+            MB_ICONERROR
+        );
+        return 0;
+    }
+    else
+    {
+        for (int i = 0; i < numberOfArgs; ++i)
+        {
+            std::wstring argument(cmdArgList[i]);
+            argument += L", it's arg #" + std::to_wstring(i);
+            MessageBox(
+                NULL,
+                (LPCWSTR)argument.c_str(),
+                (LPCWSTR)L"Info",
+                MB_ICONINFORMATION
+            );
+        }
+    }
+
     MSG msg;
 
     // Main message loop:
@@ -51,6 +82,9 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
             DispatchMessage(&msg);
         }
     }
+
+    // Free memory allocated for CommandLineToArgvW arguments.
+    LocalFree(cmdArgList);
 
     return (int) msg.wParam;
 }
