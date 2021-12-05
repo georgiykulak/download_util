@@ -21,9 +21,9 @@ LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
-                     _In_opt_ HINSTANCE hPrevInstance,
-                     _In_ LPWSTR    lpCmdLine,
-                     _In_ int       nCmdShow)
+    _In_opt_ HINSTANCE hPrevInstance,
+    _In_ LPWSTR    lpCmdLine,
+    _In_ int       nCmdShow)
 {
     UNREFERENCED_PARAMETER(hPrevInstance);
     UNREFERENCED_PARAMETER(lpCmdLine);
@@ -36,13 +36,25 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     MyRegisterClass(hInstance);
 
     // Perform application initialization:
-    if (!InitInstance (hInstance, nCmdShow))
+    if (!InitInstance(hInstance, nCmdShow))
     {
         return FALSE;
     }
 
     HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_SRC));
 
+    if (lpCmdLine == std::wstring())
+    {
+        MessageBox(
+            NULL,
+            (LPCWSTR)L"There is no arguments",
+            (LPCWSTR)L"Error reading arguments from command line",
+            MB_ICONERROR
+        );
+
+        return 1;
+    }
+     
     int numberOfArgs;
     LPWSTR* cmdArgList = CommandLineToArgvW(lpCmdLine, &numberOfArgs);
     
@@ -50,25 +62,25 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     {
         MessageBox(
             NULL,
-            (LPCWSTR)L"Arguments are empty or something went wrong",
+            (LPCWSTR)L"Something went wrong",
             (LPCWSTR)L"Error reading arguments from command line",
             MB_ICONERROR
         );
-        return 0;
+        return 2;
     }
-    else
+
+    // TODO: Rewrite this for-loop to download files
+    for (int i = 0; i < numberOfArgs; ++i)
     {
-        for (int i = 0; i < numberOfArgs; ++i)
-        {
-            std::wstring argument(cmdArgList[i]);
-            argument += L", it's arg #" + std::to_wstring(i);
-            MessageBox(
-                NULL,
-                (LPCWSTR)argument.c_str(),
-                (LPCWSTR)L"Info",
-                MB_ICONINFORMATION
-            );
-        }
+        std::wstring argument(cmdArgList[i]);
+        argument += L", it's arg #" + std::to_wstring(i);
+        // TODO: Use progress bar instead
+        MessageBox(
+            NULL,
+            (LPCWSTR)argument.c_str(),
+            (LPCWSTR)L"Info",
+            MB_ICONINFORMATION
+        );
     }
 
     MSG msg;
