@@ -20,6 +20,9 @@ WCHAR szTitle[MAX_LOADSTRING];                  // The title bar text
 WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
 
 // Forward declarations of functions included in this code module:
+void SendGetRequest(std::wstring connectSiteName, std::wstring pathToResource);
+HANDLE CreateNewFile(std::wstring fileName);
+void WriteTextChunkToFile(HANDLE hFile, LPSTR ptrToBuffer, DWORD sizeOfBuffer);
 ATOM                MyRegisterClass(HINSTANCE hInstance);
 BOOL                InitInstance(HINSTANCE, int);
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
@@ -99,10 +102,6 @@ public:
     std::vector<std::wstring> PathsToResources;
 };
 
-void SendGetRequest(std::wstring connectSiteName, std::wstring pathToResource);
-void WriteTextAndCreateFile(LPSTR ptrToBuffer, DWORD sizeOfBuffer);
-
-
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     _In_opt_ HINSTANCE hPrevInstance,
     _In_ LPWSTR    lpCmdLine,
@@ -175,6 +174,11 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
 void SendGetRequest(std::wstring connectSiteName, std::wstring pathToResource)
 {
+    static size_t fileNumber = 0;
+
+    // TODO: Make replacement of slashes with "_"
+    std::wstring fileName = L"downloadedFile" + std::to_wstring(fileNumber++);
+
     DWORD dwSize = 0;
     DWORD dwDownloaded = 0;
     // TODO: Make it LPWSTR (char --> wchar_t)s
@@ -226,6 +230,8 @@ void SendGetRequest(std::wstring connectSiteName, std::wstring pathToResource)
     // Keep checking for data until there is nothing left.
     if (bResults)
     {
+        HANDLE hFile = CreateNewFile(fileName);
+
         do
         {
             // Check for available data.
@@ -274,7 +280,7 @@ void SendGetRequest(std::wstring connectSiteName, std::wstring pathToResource)
             }
 
             // Write data to file
-            WriteTextAndCreateFile(pszOutBuffer, dwSize);
+            WriteTextChunkToFile(hFile, pszOutBuffer, dwSize);
 
             // Free the memory allocated to the buffer.
             delete[] pszOutBuffer;
@@ -285,6 +291,8 @@ void SendGetRequest(std::wstring connectSiteName, std::wstring pathToResource)
                 break;
 
         } while (dwSize > 0);
+
+        CloseHandle(hFile);
     }
     else
     {
@@ -308,25 +316,15 @@ void SendGetRequest(std::wstring connectSiteName, std::wstring pathToResource)
 
 
 
-void WriteTextAndCreateFile(LPSTR ptrToBuffer, DWORD sizeOfBuffer)
+HANDLE CreateNewFile(std::wstring fileName)
 {
-    static size_t fileNumber = 0;
-
-    std::string fileName = "downloadedFile" + std::to_string(fileNumber++);
-
-    HANDLE hFile;
-    //char DataBuffer[] = "This is some test data to write to the file";
-    //DWORD dwBytesToWrite = (DWORD)strlen(DataBuffer);
-    DWORD dwBytesWritten = 0;
-    BOOL bErrorFlag = FALSE;
-
-    hFile = CreateFileA(fileName.c_str(),   // name of the write
-        GENERIC_WRITE,                      // open for writing
-        0,                                  // do not share
-        NULL,                               // default security
-        CREATE_NEW,                         // create new file only
-        FILE_ATTRIBUTE_NORMAL,              // normal file
-        NULL);                              // no attr. template
+    HANDLE hFile = CreateFileW(fileName.c_str(),    // name of the write
+        GENERIC_WRITE,                              // open for writing
+        0,                                          // do not share
+        NULL,                                       // default security
+        CREATE_NEW,                                 // create new file only
+        FILE_ATTRIBUTE_NORMAL,                      // normal file
+        NULL);                                      // no attr. template
 
     if (hFile == INVALID_HANDLE_VALUE)
     {
@@ -336,8 +334,15 @@ void WriteTextAndCreateFile(LPSTR ptrToBuffer, DWORD sizeOfBuffer)
             (LPCWSTR)L"CreateFile function failed",
             MB_ICONERROR
         );
-        return;
     }
+
+    return hFile;
+}
+
+void WriteTextChunkToFile(HANDLE hFile, LPSTR ptrToBuffer, DWORD sizeOfBuffer)
+{
+    DWORD dwBytesWritten = 0;
+    BOOL bErrorFlag = FALSE;
 
     bErrorFlag = WriteFile(
         hFile,              // open file handle
@@ -355,24 +360,19 @@ void WriteTextAndCreateFile(LPSTR ptrToBuffer, DWORD sizeOfBuffer)
             MB_ICONERROR
         );
     }
-    else
+    else if (dwBytesWritten != sizeOfBuffer)
     {
-        if (dwBytesWritten != sizeOfBuffer)
-        {
-            // This is an error because a synchronous write that results in
-            // success (WriteFile returns TRUE) should write all data as
-            // requested. This would not necessarily be the case for
-            // asynchronous writes.
-            MessageBox(
-                NULL,
-                (LPCWSTR)L"Written bytes are not equal to buffer provided",
-                (LPCWSTR)L"File wasn't loaded properly",
-                MB_ICONERROR
-            );
-        }
+        // This is an error because a synchronous write that results in
+        // success (WriteFile returns TRUE) should write all data as
+        // requested. This would not necessarily be the case for
+        // asynchronous writes.
+        MessageBox(
+            NULL,
+            (LPCWSTR)L"Written bytes are not equal to buffer provided",
+            (LPCWSTR)L"File wasn't loaded properly",
+            MB_ICONERROR
+        );
     }
-
-    CloseHandle(hFile);
 }
 
 
