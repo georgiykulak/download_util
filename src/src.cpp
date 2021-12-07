@@ -4,6 +4,10 @@
 #include "framework.h"
 #include "src.h"
 
+#include <shellapi.h>
+#include <string>
+#include <vector>
+
 #define MAX_LOADSTRING 100
 
 // Global Variables:
@@ -17,10 +21,83 @@ BOOL                InitInstance(HINSTANCE, int);
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 
+class CmdArgumentParser
+{
+public:
+    CmdArgumentParser(LPWSTR lpCmdLine)
+    {
+        if (std::wstring() == lpCmdLine)
+        {
+            MessageBox(
+                NULL,
+                (LPCWSTR)L"There is no arguments",
+                (LPCWSTR)L"Error reading arguments from command line",
+                MB_ICONERROR
+            );
+            return;
+        }
+
+        int numberOfArgs;
+        LPWSTR* cmdArgList = CommandLineToArgvW(lpCmdLine, &numberOfArgs);
+
+        if (NULL == cmdArgList)
+        {
+            MessageBox(
+                NULL,
+                (LPCWSTR)L"Something went wrong",
+                (LPCWSTR)L"Error reading arguments from command line",
+                MB_ICONERROR
+            );
+            return;
+        }
+
+        for (int i = 0; i < numberOfArgs; ++i)
+        {
+            std::wstring const argument(cmdArgList[i]);
+            auto const delim = argument.find('=');
+            auto const option = argument.substr(0, delim);
+            auto const value = argument.substr(delim + 1);
+
+            if (option == L"-p" || option == L"--path")
+            {
+                PathsToResources.push_back(value);
+            }
+            else if (option == L"-c" || option == L"--connect")
+            {
+                // If we place more than one such option the latest will be chosen
+                ConnectSiteName = value;
+            }
+            else if (option == L"-l" || option == L"--pathToLogs")
+            {
+                // The same behaviour as for ConnectSiteName
+                PathToLogger = value;
+            }
+            else
+            {
+                // TODO: throw some error, maybe
+                MessageBox(
+                    NULL,
+                    (LPCWSTR)L"Unhandled error while splitting cmd argumnets",
+                    (LPCWSTR)L"Error splitting args",
+                    MB_ICONERROR
+                );
+            }
+        }
+
+        // Free memory allocated for CommandLineToArgvW arguments.
+        LocalFree(cmdArgList);
+    }
+
+    std::wstring ConnectSiteName;
+    // TODO: Mechanism for
+    std::wstring PathToLogger;
+    std::vector<std::wstring> PathsToResources;
+};
+
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
-                     _In_opt_ HINSTANCE hPrevInstance,
-                     _In_ LPWSTR    lpCmdLine,
-                     _In_ int       nCmdShow)
+    _In_opt_ HINSTANCE hPrevInstance,
+    _In_ LPWSTR    lpCmdLine,
+    _In_ int       nCmdShow)
 {
     UNREFERENCED_PARAMETER(hPrevInstance);
     UNREFERENCED_PARAMETER(lpCmdLine);
@@ -33,12 +110,26 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     MyRegisterClass(hInstance);
 
     // Perform application initialization:
-    if (!InitInstance (hInstance, nCmdShow))
+    if (!InitInstance(hInstance, nCmdShow))
     {
         return FALSE;
     }
 
     HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_SRC));
+
+    CmdArgumentParser parser(lpCmdLine);
+
+    // TODO: Rewrite this for-loop to download files
+    for (auto arg : parser.PathsToResources)
+    {
+        // TODO: Use progress bar instead
+        MessageBox(
+            NULL,
+            (LPCWSTR)arg.c_str(),
+            (LPCWSTR)L"Info",
+            MB_ICONINFORMATION
+        );
+    }
 
     MSG msg;
 
