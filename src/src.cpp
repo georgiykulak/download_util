@@ -6,6 +6,7 @@
 
 #include <shellapi.h>
 #include <string>
+#include <vector>
 
 #define MAX_LOADSTRING 100
 
@@ -19,6 +20,79 @@ ATOM                MyRegisterClass(HINSTANCE hInstance);
 BOOL                InitInstance(HINSTANCE, int);
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
+
+class CmdArgumentParser
+{
+public:
+    CmdArgumentParser(LPWSTR lpCmdLine)
+    {
+        if (std::wstring() == lpCmdLine)
+        {
+            MessageBox(
+                NULL,
+                (LPCWSTR)L"There is no arguments",
+                (LPCWSTR)L"Error reading arguments from command line",
+                MB_ICONERROR
+            );
+            return;
+        }
+
+        int numberOfArgs;
+        LPWSTR* cmdArgList = CommandLineToArgvW(lpCmdLine, &numberOfArgs);
+
+        if (NULL == cmdArgList)
+        {
+            MessageBox(
+                NULL,
+                (LPCWSTR)L"Something went wrong",
+                (LPCWSTR)L"Error reading arguments from command line",
+                MB_ICONERROR
+            );
+            return;
+        }
+
+        for (int i = 0; i < numberOfArgs; ++i)
+        {
+            std::wstring const argument(cmdArgList[i]);
+            auto const delim = argument.find('=');
+            auto const option = argument.substr(0, delim);
+            auto const value = argument.substr(delim + 1);
+
+            if (option == L"-p" || option == L"--path")
+            {
+                PathsToResources.push_back(value);
+            }
+            else if (option == L"-c" || option == L"--connect")
+            {
+                // If we place more than one such option the latest will be chosen
+                ConnectSiteName = value;
+            }
+            else if (option == L"-l" || option == L"--pathToLogs")
+            {
+                // The same behaviour as for ConnectSiteName
+                PathToLogger = value;
+            }
+            else
+            {
+                // TODO: throw some error, maybe
+                MessageBox(
+                    NULL,
+                    (LPCWSTR)L"Unhandled error while splitting cmd argumnets",
+                    (LPCWSTR)L"Error splitting args",
+                    MB_ICONERROR
+                );
+            }
+        }
+
+        // Free memory allocated for CommandLineToArgvW arguments.
+        LocalFree(cmdArgList);
+    }
+
+    std::wstring ConnectSiteName;
+    // TODO: Mechanism for
+    std::wstring PathToLogger;
+    std::vector<std::wstring> PathsToResources;
+};
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     _In_opt_ HINSTANCE hPrevInstance,
@@ -43,41 +117,15 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
     HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_SRC));
 
-    if (lpCmdLine == std::wstring())
-    {
-        MessageBox(
-            NULL,
-            (LPCWSTR)L"There is no arguments",
-            (LPCWSTR)L"Error reading arguments from command line",
-            MB_ICONERROR
-        );
-
-        return 1;
-    }
-     
-    int numberOfArgs;
-    LPWSTR* cmdArgList = CommandLineToArgvW(lpCmdLine, &numberOfArgs);
-    
-    if (NULL == cmdArgList)
-    {
-        MessageBox(
-            NULL,
-            (LPCWSTR)L"Something went wrong",
-            (LPCWSTR)L"Error reading arguments from command line",
-            MB_ICONERROR
-        );
-        return 2;
-    }
+    CmdArgumentParser parser(lpCmdLine);
 
     // TODO: Rewrite this for-loop to download files
-    for (int i = 0; i < numberOfArgs; ++i)
+    for (auto arg : parser.PathsToResources)
     {
-        std::wstring argument(cmdArgList[i]);
-        argument += L", it's arg #" + std::to_wstring(i);
         // TODO: Use progress bar instead
         MessageBox(
             NULL,
-            (LPCWSTR)argument.c_str(),
+            (LPCWSTR)arg.c_str(),
             (LPCWSTR)L"Info",
             MB_ICONINFORMATION
         );
@@ -94,9 +142,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
             DispatchMessage(&msg);
         }
     }
-
-    // Free memory allocated for CommandLineToArgvW arguments.
-    LocalFree(cmdArgList);
 
     return (int) msg.wParam;
 }
