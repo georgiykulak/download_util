@@ -41,9 +41,6 @@
     <ClCompile Include="src.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="FileInteractions.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="src.rc">

@@ -149,7 +149,6 @@
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="FileInteractions.cpp" />
     <ClCompile Include="src.cpp" />
   </ItemGroup>
   <ItemGroup>
